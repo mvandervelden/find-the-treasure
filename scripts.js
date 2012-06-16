@@ -141,16 +141,16 @@ function playerMoved() {
         window.goal.setVisible(true);
     }
     if (dist < window.previousDistance) {
-        $('text_box').set('html', 'Warmer!');
-        $('text_box').highlight('#f88', '#fff');
+        $('heat_box').set('html', 'Warmer!');
+        $('heat_box').highlight('#f88', '#fff');
     } else {
-        $('text_box').set('html', 'Colder!');
-        $('text_box').highlight('#88f', '#fff');
+        $('heat_box').set('html', 'Colder!');
+        $('heat_box').highlight('#88f', '#fff');
     }
     if (dist < 30) {
-        $('text_box').set('html', 
+        $('heat_box').set('html', 
             'Congratulations!! <br/> You found the treasure! <br/> Refresh to play again with a new treasure!');
-        $('text_box').highlight('#f88', '#fff');
+        $('heat_box').highlight('#f88', '#fff');
         $('bottom_box').fade('in');
 
     }
@@ -172,7 +172,7 @@ function playerMoved() {
         $('localizer').set('html', currentLocation);
     }
     if (window.viewspeed) {
-        $('speedometer').set('html', Math.round(total * 100) / 100 + ' km/h');
+        $('speedometer').set('html', Math.round(total * 10) / 10 + ' km/h');
     }
     if (window.viewdist) {
         $('distizer').set('html', Math.round(dist) + 'm to go');
@@ -251,7 +251,10 @@ function setLocation(latlng) {
     if (window.viewcompass) {
         $('compass_box').fade();
     }
-
+    $('speed_box').fade();
+    $('heat_box').fade();
+    $('info_box').fade();
+    var menu = $('menu1').dispose();
     // Set up the Street View Panorama
     //window.panorama = window.map.getStreetView();
     window.panorama = new google.maps.StreetViewPanorama(
@@ -330,7 +333,6 @@ function startGame() {
         initLocations(startPos);
     }
     $('hud').fade();
-    $('gamemenu').set('html', 'Starting...');
 }
 
 function optionManager() {

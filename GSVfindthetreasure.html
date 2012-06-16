@@ -5,8 +5,7 @@
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript" src='h5utils.js'></script>
 <script type-"text/javascript" src="scripts.js"></script>
-<!-- TODO:  small map
-            Menu (choose town, get town, settings)
+<!-- TODO:  Menu (choose town, get town, settings)
             How To / tutorial
             HUD (compass, speedometer, local map?)
             Custom panorama for treasure location?!
@@ -29,6 +28,8 @@
   .hudcl     {width: 100%; height: 10%; bottom: 0px; z-index: 50; border:2px solid #ccc;
               font-family: Helvetica,Arial,Verdana; font-size: 24px;
               background: #fff; position: fixed;}
+  .screen_txt{font-family: Helvetica,Arial,Verdana; font-size: 20px;
+              color:#FFFFFF; text-shadow:0px 0px 5px #000000;}
 </style>
 
 
@@ -47,14 +48,26 @@
         <span>Welcome to the Street View Treasure Hunt! </span>
         <!-- Use the arrow keys to cycle through Amsterdam and find the treasure! -->
           Menu
+          <div id="tutorial" class="menu-item">Tutorial</div>
+          <div id="campaign" class="menu-item">Single player campaign</div>
+          <div id="freeplay" class="menu-item">Single player free play</div>
+          <div id="multipl" class="menu-item">Multiplayer CtF</div>
+          
+          <!-- campaign buttons -->
+          <div id="lvl1" class="menu-item">Level 1</div>
+          <div id="lvl2" class="menu-item">Level 2</div>
+          
+          <!-- free play /multiplay setting buttons -->
+          <div id="locmode" class="menu-item">Location: default</div>
+          <div id="diffmode" class="menu-item">Difficulty: Normal</div>
+          <div id="distmode" class="menu-item">Distance: 1km</div>
+          
           <div id="lmode" class="menu-item">Select Location Mode</div>
-          <div id="dmode" class="menu-item">Select Max dist</div>
           <div id="showmap" class="menu-item">Map visible</div>
           <div id="showdist" class="menu-item">Distance visible</div>
           <div id="showlocs" class="menu-item">Coordinates invisible</div>
           <div id="showstreet" class="menu-item">Goal street visible</div>
         
-          <div id="tutorial" class="menu-item">Tutorial</div>
           <div id="start" class="menu-item">Start Game!</div>
         <span class='notice'>(Click the screen first to focus. Refresh to restart with a new egg when you got stuck)</span>
       </div>
@@ -73,27 +86,33 @@
     <div id="location_check" style"position:fixed; bottom: 40px; left: 10px;">
       <span id="status">checking geoLocation...</span>
       <span id="localizer"></span> 
-      <span id="compass-txt"></span> <br>
+      
       <span id="goalizer"></span>
-      <span id="streetizer"></span>
-      <span id="distizer"></span>
+
 
     </div>
 
-    <div id="speedometer" style="position:fixed; bottom: 40px; right: 10px; z-index: 50;">
-      km/h
-    </div>
   </div>
   <div id="pano_canvas" style="height: 100%; width: 100%; ">
-    <div id="compass_box" class="box" style="padding:10px; position:fixed; left:1%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
-        <img id = 'cps_im' src="compass1.png" style="height: 100%; width:100%;" />
-        <!-- <canvas id="com_canv" style="heigth:100%; width:100%"> </canvas> -->
+    <div style="position: fixed; top: 15px; height: 10%; left: 0; right: 0; border: none; z-index: 40;width: 100%">
+      <div id="heat_box" class="box" style="padding:10px; position:fixed; left:0; right:0; top:1%; height:10%; z-index:50; opacity:0">
+        Starting...
+      </div>
+      <div id="compass_box" class="box" style="padding:10px; position:fixed; left:1%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
+        <img id='cps_im' src="compass1.png" style="height: 100%; width:100%;" />
+      </div>
+      <div id="info_box" class="screen_txt" style="position:fixed; left:15%; top:3%; heigth: 10%; z-index:50; opacity:0">
+        <span id="compass-txt"></span> <br>
+        <span id="streetizer"></span><br>
+        <span id="distizer"></span>
+      </div>
+      <div id="map_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:69%; height:16%; width:17%;z-index:50; opacity:0">
+        <div id="map_canvas" style="height:100%; width:100%;"></div>
+      </div>
+      <div id="speed_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
+        <div id="speedometer"> km/h</div>
+      </div>
     </div>
-    <div id="map_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:69%; height:16%; width:17%;z-index:50; opacity:0">
-      <div id="map_canvas" style="height:100%; width:100%;"></div>
-      
-    </div>
-    
   </div>
 
 

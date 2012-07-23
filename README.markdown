@@ -8,6 +8,7 @@
 * Make tutorial
 * Make 'levels' (campaign)
 * Fancy up the stuff: intro screen, menu,
+* perhaps introduce hint system (street name, snap shot etc.)
 
 ## HOWTO ##
 

@@ -1,39 +1,40 @@
 function geoSuccess(position) {
-    var s = document.querySelector('#status');
+    var status = document.querySelector('#status');
 
-    if (s.className == 'success') {
+    if (status.className == 'success') {
         // not sure why we're hitting this twice in FF, I think it's to do with
         //a cached result coming back
         return;
     }
 
-    s.innerHTML = "found you!";
-    s.className = 'success';
-    var myLoc = new google.maps.LatLng(position.coords.latitude, 
+    status.innerHTML = "found you!";
+    status.className = 'success';
+    window.startPos = new google.maps.LatLng(position.coords.latitude, 
         position.coords.longitude);
-    window.myLoc = myLoc;
-    if (window.viewlocs) {
-        $('localizer').set('html', myLoc);
+    if (window.gamemode == "FreePlay") {
+        initFreePlayLocations(window.startPos);
+    } else if (window.gamemode == "MultiPlayer") {
+        initMultiPlayerLocations(window.startPos);
     }
-    initLocations(myLoc);
 }
 
 function geoError(msg) {
-    var s = document.querySelector('#status');
-    s.innerHTML = typeof msg == 'string' ? msg: "failed";
-    s.className = 'fail';
+    var status = document.querySelector('#status');
+    status.innerHTML = typeof msg == 'string' ? msg: "failed";
+    status.className = 'fail';
 
-    var startPos = new google.maps.LatLng(52.356056, 4.892968);
-    window.myLoc = startPos;
-    if (window.viewlocs) {
-        $('localizer').set('html', startPos);
+    window.startPos = new google.maps.LatLng(52.356056, 4.892968);
+    if (window.gamemode == "FreePlay") {
+        initFreePlayLocations(window.startPos);
+    } else if (window.gamemode == "MultiPlayer") {
+        initMultiPlayerLocations(window.startPos);
     }
-    initLocations(startPos);
-    // console.log(arguments);
 }
 
 
 function getRandomLoc(latlng, distance) {
+    // max distance is euclidean, get difference only in lat and lon, so convert to the max dist of both lat and lon for the diagonal
+    distance = Math.sqrt(Math.pow(distance,2)/2)
     var diffLat = Math.abs(google.maps.geometry.spherical.computeOffset(
         latlng, distance, 0).lat() - google.maps.geometry.spherical.computeOffset(
             latlng, distance, 180).lat());
@@ -85,10 +86,10 @@ function setGoalPosition(latlng) {
             $('streetizer').set('html', 'at: ' + streetname);
         }
     });
-    if (window.viewdist) {
-        var dist = google.maps.geometry.spherical.computeDistanceBetween(
-                window.panorama.getPosition(), latlng);
-    }
+    var dist = google.maps.geometry.spherical.computeDistanceBetween(
+                window.startPos, latlng);
+    initProgressBar(dist);
+    
     var names = ['egg1.gif', 'egg2.gif', 'egg3.gif'];
     var xes = [102, 108, 112];
     var yes = [163, 120, 134];
@@ -104,6 +105,7 @@ function setGoalPosition(latlng) {
         icon: markerImage,
         title: 'Congrats!'
     });
+
     if (window.viewmap) {
         window.goalOnMap = new google.maps.Marker({
             position: latlng,
@@ -127,105 +129,69 @@ function playerMoved() {
         return
     }
     var currentLocation = window.panorama.getPosition()
+    // calculate distance to goal
     var dist = google.maps.geometry.spherical.computeDistanceBetween(
         currentLocation, window.goalPosition);
-    //console.log(dist)
-    if (dist > 50 && dist < 400) {
-        getStreetName(window.panorama.getPosition(),
-        function(streetname) {
+    
+    updateProgressBar(dist);
+    updateHeatOMeter(dist);
+    if (window.viewspeed) {
+        updateSpeedOMeter(currentLocation);
+    }
+    if (window.viewmap) {
+        updateMap(currentLocation);
+    }
+    
+    if (window.gamemode == "MultiPlayer") {
+        // Send location to opponent
+        window.socket.send(window.uid+':Location:'+currentLocation.lat()+','+currentLocation.lng()+','+dist);
+        if (window.previousDistance != undefined && window.opponentDist != undefined) {
+            // Put in console who is closer
+            if (window.previousDistance < window.opponentDist) {
+                console.log('You are closer!');
+            } else {
+                console.log('Opponent is closer!');
+            }
+        }
+    }
+    // Debug purposes
+    if (window.viewdist) {
+        $('distizer').set('html', Math.round(dist) + 'm to go');
+    }
+    // Show goal marker if close enough
+    if (dist > 100 && dist < 400) {
+        getStreetName(window.panorama.getPosition(), function(streetname) {
             if (streetname != 'Unknown') {
                 window.goal.setVisible((streetname == window.goalStreet))
             }
         });
-    } else if (dist <= 50) {
+    } else if (dist <= 100) {
         window.goal.setVisible(true);
     }
-    if (dist < window.previousDistance) {
-        $('heat_box').set('html', 'Warmer!');
-        $('heat_box').highlight('#f88', '#fff');
-    } else {
-        $('heat_box').set('html', 'Colder!');
-        $('heat_box').highlight('#88f', '#fff');
-    }
     if (dist < 30) {
-        $('heat_box').set('html', 
-            'Congratulations!! <br/> You found the treasure! <br/> Refresh to play again with a new treasure!');
-        $('heat_box').highlight('#f88', '#fff');
-        $('bottom_box').fade('in');
-
+        // Closer than 30m means reached the goal
+        gameFinished();
     }
-    var diff = google.maps.geometry.spherical.computeDistanceBetween(
-        currentLocation, window.previousLocation);
-    var time = new Date().getTime() / 1000;
-    var timePassed = (time - window.previousTime);
-    window.speeds.push((diff / 1000) / (timePassed / 3600));
-    if (speeds.length > 6) {
-        speeds.shift();
-    }
-    var total = 0;
-    for (var i = 0; i < window.speeds.length; i++) {
-        total += window.speeds[i];
-    }
-    total = total / window.speeds.length;
-
-    if (window.viewlocs) {
-        $('localizer').set('html', currentLocation);
-    }
-    if (window.viewspeed) {
-        $('speedometer').set('html', Math.round(total * 10) / 10 + ' km/h');
-    }
-    if (window.viewdist) {
-        $('distizer').set('html', Math.round(dist) + 'm to go');
-    }
-    if (window.viewmap) {
-        window.peg.setPosition(currentLocation);
-        window.map.setCenter(currentLocation);
-    }
-
+    
     window.previousDistance = dist;
-    window.previousTime = time;
-    window.previousLocation = currentLocation;
     console.log('moved');
 }
 
-function compassChanged() {
-    var panoheading = window.panorama.getPov().heading;
-    panoheading = ((panoheading + 180) % 360) - 180;
-    var curlocation = window.panorama.getPosition();
-    var goalheading = google.maps.geometry.spherical.computeHeading(
-        curlocation, window.goal.position);
-
-    var heading = ((goalheading - panoheading + 180) % 360) - 180;
-
-    if (heading < -180 || heading > 180) {
-        console.log('diff: ' + (goalheading - panoheading));
-        console.log('head: ' + (((goalheading - panoheading + 180) % 360) - 180));
+function opponentMoved() {
+    if (window.previousDistance != undefined) {
+        if (window.previousDistance < window.opponentDist) {
+            console.log('You are closer!');
+        } else {
+            console.log('Opponent is closer!');
+        }
     }
-    if (heading < 0) {
-        var l_r = 'left';
-    } else {
-        var l_r = 'right';
+    else {
+        console.log('no prev_dist?');
+        console.log(window.previousDistance);
     }
-    $('compass-txt').set('html', 'Goal ' + Math.abs(Math.round(heading)) + '&deg; to the ' + l_r);
-    var img = document.getElementById('cps_im');
-    //[-180 -135 -90 -45 0]
-    //[-157.5 112.5 67.5 22.5]
-    if (heading < -157.5 || heading > 157.5) {
-        $('cps_im').set('src', "compass180.png");
-    } else if (heading < -112.5) {
-        $('cps_im').set('src', "compass225.png");
-    } else if (heading < -67.5) {
-        $('cps_im').set('src', "compass270.png");
-    } else if (heading < -22.5) {
-        $('cps_im').set('src', "compass315.png");
-    } else if (heading < 22.5) {
-        $('cps_im').set('src', "compass0.png");
-    } else if (heading < 67.5) {
-        $('cps_im').set('src', "compass45.png");
-    } else if (heading < 112.5) {
-        $('cps_im').set('src', "compass90.png");
-    } else if (heading < 157.5) {
-        $('cps_im').set('src', "compass135.png");
+    window.opponent.setPosition(window.opponentPos);
+    if (window.viewmap) {
+        window.opp_peg.setPosition(window.opponentPos);
     }
 }
 
@@ -254,7 +220,7 @@ function setLocation(latlng) {
     $('speed_box').fade();
     $('heat_box').fade();
     $('info_box').fade();
-    var menu = $('menu1').dispose();
+    var menu = $('text_box').dispose();
     // Set up the Street View Panorama
     //window.panorama = window.map.getStreetView();
     window.panorama = new google.maps.StreetViewPanorama(
@@ -272,18 +238,23 @@ function setLocation(latlng) {
     window.panorama.addressControl = false;
     window.map.setStreetView(window.panorama);
     if (window.viewmap) {
-        var peg = new google.maps.MarkerImage('peggie.png');
-        peg.anchor = new google.maps.Point(6, 16);
-        peg.size = new google.maps.Size(24, 47);
-        peg.scaledSize = new google.maps.Size(12, 23);
-        window.peg = new google.maps.Marker({
-            position: latlng,
-            map: window.map,
-            icon: peg,
-            clickable: false,
-        });
+        initMap(latlng);
     }
+    
+    if (window.gamemode == "MultiPlayer") {
+        // View Opponent in Street View
+        var markerImage = new google.maps.MarkerImage('peggie_opp.png');
+        markerImage.size = new google.maps.Size(300, 450);
+        markerImage.scaledSize = new google.maps.Size(300, 450);
 
+        window.opponent = new google.maps.Marker({
+            position: window.opponentPos,
+            map: window.panorama,
+            icon: markerImage,
+            title: 'Your Opponent'
+        });
+        
+    }
     // Set some global variables
     window.previousLocation = latlng;
     window.hasMoved = false;
@@ -306,116 +277,235 @@ function setLocation(latlng) {
     document.getElementById("pano_canvas").focus();
 }
 
-function initLocations(startPos) {
-    // Set the current position to the nearest Street View to the Start Location
-    console.log(startPos);
-    getClosestStreetView(startPos, setLocation);
-    // Set the Treasure location randomly within certain distance of the start
-    // position, somewhere where there is Street View
-    var goal = getRandomLoc(startPos, window.distance);
-    getClosestStreetView(goal, setGoalPosition);
+function resetLocation(latlng) {
+    window.panorama.setPosition(latlng);
+    if (window.viewmap) {
+        window.peg.setPosition(latlng);
+    }
+    // Set some global variables
+    window.previousLocation = latlng;
+    window.hasMoved = true;
+}
+function resetGoalPosition(latlng) {
+    window.goalPosition = latlng;
+    window.previousDistance = Infinity;
+    window.previousTime = new Date().getTime();
+    window.speeds = [];
+    getStreetName(latlng,
+    function(streetname) {
+        window.goalStreet = streetname;
+        if (window.viewstreet) {
+            $('streetizer').set('html', 'at: ' + streetname);
+        }
+    });
+    if (window.viewdist) {
+        var dist = google.maps.geometry.spherical.computeDistanceBetween(
+                window.panorama.getPosition(), latlng);
+    }
+    window.goal.setPosition(latlng);
+    
+    if (window.viewmap) {
+        window.goalOnMap.setPosition(latlng);
+    }
+    if (window.viewlocs) {
+        $('goalizer').set('html', 'Goal: ' + latlng);
+    }
+    if (window.viewdist) {
+        $('distizer').set('html', Math.round(dist) + 'm to go');
+    }
 }
 
-function startGame() {
-    if (window.lmode) {
-        // Check whether the user's location can be tracked, otherwise take the default location to start.
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(geoSuccess, geoError);
-        } else {
-            geoError('not supported');
-        }
+function set_difficulty(diff) {
+    //difficulty settings
+    // very easy 0: heat_indicator + compass + distance + map
+    // easy      1: heat_indicator + compass + distance
+    // normal    2: heat_indicator + compass
+    // original  3: heat_indicator
+    
+    if (diff == 0) {
+        window.difficulty = 0;
+        window.viewdist = true;
+        window.viewcompass = true;
+        window.viewmap = true;
+        return 'Very Easy';
+    } else if (diff == 1) {
+        window.difficulty = 1;
+        window.viewdist = true;
+        window.viewcompass = true;
+        window.viewmap = false;
+        return 'Easy';
+    } else if (diff == 2) {
+        window.difficulty = 2;
+        window.viewcompass = true;
+        window.viewmap = false;
+        window.viewdist = false;
+        return 'Normal';
+    } else if (diff == 3) {
+        window.difficulty = 3;
+        window.viewcompass = false;
+        window.viewmap = false;
+        window.viewdist = false;
+        return 'Original';
     } else {
-        var startPos = new google.maps.LatLng(52.356056, 4.892968);
-        window.myLoc = startPos;
-        if (window.viewlocs) {
-            $('localizer').set('html', startPos);
-        }
-        initLocations(startPos);
+        console.log("Something's wrong, not gooed diff setting" + diff);
+        return 'None';
     }
-    $('hud').fade();
 }
 
 function optionManager() {
-    window.distance = 500;
-    window.lmode = true;
-    window.viewdist = true;
-    window.viewmap = true;
-    window.viewlocs = false;
-    window.viewstreet = true;
-    window.viewcompass = true;
+    // distance default = 1000
+    window.distance = 1000;
+    // set default difficulty
+    set_difficulty(2);
+    
+    // Default: no custum locations
+    window.locmode = false;
+    
+    // Speed always visible
     window.viewspeed = true;
-    var d = Math.round(Math.sqrt(2 * Math.pow(window.distance, 2)));
-
-    $('dmode').set('html', 'Max dist = ' + d + 'm');
-
-    $('dmode').addEvent('click',
-    function() {
-        if (window.distance == 500) {
-            window.distance = 1000;
-        } else {
-            window.distance = 500;
-        }
-        var d = Math.round(Math.sqrt(2 * Math.pow(window.distance, 2)));
-        $('dmode').set('html', 'Max dist = ' + d + 'm');
+    
+    $('tutorial').addEvent('click', startTutorial);
+    
+    $('campaign').addEvent('click', function() {
+        $('tutorial').dispose();
+        $('freeplay').dispose();
+        $('multiplay').dispose();
+        $('campaign').removeEvents('click');
+        $('campaign').addEvent('click', reloadGame);
+        
+        // If campaign: get buttons to choose a level
+        $('gamemenu').grab(new Element('div.menu-item', {id:'level1', html:'Level 1'}));
+        $('gamemenu').grab(new Element('div.menu-item', {id:'level2', html:'Level 2'}));
+        // TODO Add levels
     });
+    
+    $('freeplay').addEvent('click', function() {
+        $('tutorial').dispose();
+        $('campaign').dispose();
+        $('multiplay').dispose();
+        $('freeplay').removeEvents('click');
+        $('freeplay').addEvent('click', reloadGame);
+        // If free play: get buttons to choose settings
+        addSettingsButtons();
+        
+        $('gamemenu').grab(new Element('div.menu-item', {
+            id:'start',
+            html:'START GAME',
+            events: {
+               click: startFreePlayGame, 
+            }
+        }));
+        
+    });
+    
+    $('multiplay').addEvent('click', function() {
+        $('tutorial').dispose();
+        $('campaign').dispose();
+        $('freeplay').dispose();
+        $('multiplay').removeEvents('click');
+        $('multiplay').addEvent('click', reloadGame);
+        // If multiplayer: get buttons to choose settings
+        addSettingsButtons();
+        $('gamemenu').grab(new Element('div.menu-item', {
+            id:'retrieve_url',
+            html:"Retrieve this game's url",
+            events: {
+                click: function() {
+                    $('locmode').dispose();
+                    $('diffmode').dispose();
+                    $('distmode').dispose();
+                    $('retrieve_url').dispose();
+                    // Setup details for the socketservice to exchange: Game id
+                    var game_id = Number.random(0,9999999999999999).toString();
+                    var url = window.location.href + "#" + game_id.toString();
+        
+                    setupMultiPlayerGame();
+        
+                    // TODO Make this look nice
+                    $('gamemenu').grab(new Element('div.menu_message', {
+                        html: "Send the following link to your opponent, and click it yourself"
+                    }));
+                    $('gamemenu').grab(new Element('a.menu_message', {
+                        id: 'mgame_url',
+                        href: "#"+game_id.toString(),
+                        html: url
+                    }));
+                    
+                }
+            }
+        }))
+        
+    });
+}
 
-    $('lmode').addEvent('click',
-    function() {
-        if (window.lmode) {
-            window.lmode = false;
-            $('lmode').set('html', 'Using default location');
-        } else {
-            window.lmode = true;
-            $('lmode').set('html', 'Using current location');
+function addSettingsButtons() {
+    // If free play: get buttons to choose settings
+    $('gamemenu').grab(new Element('div.menu-item', {
+        id:'locmode',
+        html:'Location: default',
+        events: {
+            click: function() {
+                if (window.locmode) {
+                    window.locmode = false;
+                    $('locmode').set('html', 'Location: default');
+                } else {
+                    window.locmode = true;
+                    $('locmode').set('html', "Location: at Your's!");
+                }
+            }
         }
-    });
-
-    $('showdist').addEvent('click',
-    function() {
-        if (window.viewdist) {
-            window.viewdist = false;
-            $('showdist').set('html', 'Distance invisible');
-        } else {
-            window.viewdist = true;
-            $('showdist').set('html', 'Distance visible');
+    }));
+    $('gamemenu').grab(new Element('div.menu-item', {
+        id:'diffmode', 
+        html:'Difficulty: Normal',
+        events: {
+            click: function() {
+                var s = set_difficulty((window.difficulty+1)%4);
+                $('diffmode').set('html', 'Difficulty: ' + s);
+            }
         }
-    });
-    $('showmap').addEvent('click',
-    function() {
-        if (window.viewmap) {
-            window.viewmap = false;
-            $('showmap').set('html', 'Map invisible');
-        } else {
-            window.viewmap = true;
-            $('showmap').set('html', 'Map visible');
+    }));
+    $('gamemenu').grab(new Element('div.menu-item', {
+        id:'distmode', 
+        html:'Distance: 1000m',
+        events: {
+            click: function() {
+                if (window.distance == 1000) {
+                    window.distance = 500;
+                } else {
+                    window.distance = 1000;
+                }
+                $('distmode').set('html', 'Distance:  ' + window.distance + 'm');
+            }
         }
-    });
-    $('showlocs').addEvent('click',
-    function() {
-        if (window.viewlocs) {
-            window.viewlocs = false;
-            $('showlocs').set('html', 'Coordinates invisible');
-        } else {
-            window.viewlocs = true;
-            $('showlocs').set('html', 'Coordinates visible');
-        }
-    });
-    $('showstreet').addEvent('click',
-    function() {
-        if (window.viewstreet) {
-            window.viewstreet = false;
-            $('showstreet').set('html', 'Goal street invisible');
-        } else {
-            window.viewstreet = true;
-            $('showstreet').set('html', 'Goal street visible');
-        }
-    });
-
-    $('tutorial').addEvent('click', startGame);
-
-    $('start').addEvent('click', startGame);
+    }));
 }
 
 function initialize() {
+    // Create user ID
+    window.uid = Number.random(0,9999999999999999).toString();
+    window.gid = undefined;
+    console.log('uid: '+ window.uid);
+    // Look for location hash: it defines the game ID
+    if (window.location.hash != "") {
+        check_for_multiplayergame();
+    }
+    // Add listener for hashtag in url -> if so, you're in a multiplayer game
+    function locationHashChanged() {
+        // Should happen when clicking the multiplayer start button
+        console.log('hashchanged')
+        if (!window.gid) {
+            init_multiplayergame();
+        } else {
+            console.log("Changing hash! warning! Will not do anything!")
+            // TODO
+        }
+    }
+    window.onhashchange = locationHashChanged;
+    // Set all options in the menu
     optionManager();
+}
+
+function reloadGame() {
+    window.location.reload();
 }

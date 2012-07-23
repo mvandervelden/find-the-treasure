@@ -3,8 +3,14 @@
 <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
 <title>Find the Treasure in Google Street View</title>
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script src="http://easywebsocket.org/easyWebSocket.min.js"></script>
 <script type="text/javascript" src='h5utils.js'></script>
 <script type-"text/javascript" src="scripts.js"></script>
+<!-- <script type-"text/javascript" src="fbscripts.js"></script> -->
+<script type-"text/javascript" src="socket.js"></script>
+<script type-"text/javascript" src="levels.js"></script>
+<script type-"text/javascript" src="gameunits.js"></script>
+
 <!-- TODO:  Menu (choose town, get town, settings)
             How To / tutorial
             HUD (compass, speedometer, local map?)
@@ -23,8 +29,11 @@
   .box       {margin: auto; width: 270px; 
               background: #fff; border-radius:20px;  padding: 20px; border:2px solid #ccc;
               font-size: 25px; font-family: Helvetica,Arial,Verdana; text-align: center; }
+  .notice    {margin: auto; width: 270px; position: relative; top:40%;
+              background: #fff; border-radius:20px;  padding: 20px; border:2px solid #ccc;
+              font-size: 25px; font-family: Helvetica,Arial,Verdana; text-align: center; z-index:50; }
   .menu-item {border:4px solid #ccc;font-size: 16px; text-align:left;}
-  .notice    {display: block; font-size: 12px; margin-top:15px;}
+  .menu_message {font-size: 16px;}
   .hudcl     {width: 100%; height: 10%; bottom: 0px; z-index: 50; border:2px solid #ccc;
               font-family: Helvetica,Arial,Verdana; font-size: 24px;
               background: #fff; position: fixed;}
@@ -38,51 +47,41 @@
   google.load("mootools","1.3.1");
   google.load("maps","3",{'other_params': "sensor=false&libraries=geometry"});
   google.setOnLoadCallback(initialize);
+  
 </script>
 </head>
 
 <body>
+  
+  <!-- <div id="fb-root"></div> -->
+
+
+<!--   <div class="fb-login-button" data-show-faces="true" data-width="200" data-max-rows="1"></div> -->
+
+    
   <div style="position: fixed; top: 15px; left: 0; right: 0; border: none; z-index: 50;width: 100%">
     <div id="text_box" class="box">
       <div id="gamemenu">        
         <span>Welcome to the Street View Treasure Hunt! </span>
         <!-- Use the arrow keys to cycle through Amsterdam and find the treasure! -->
-          Menu
-          <div id="tutorial" class="menu-item">Tutorial</div>
-          <div id="campaign" class="menu-item">Single player campaign</div>
-          <div id="freeplay" class="menu-item">Single player free play</div>
-          <div id="multipl" class="menu-item">Multiplayer CtF</div>
-          
-          <!-- campaign buttons -->
-          <div id="lvl1" class="menu-item">Level 1</div>
-          <div id="lvl2" class="menu-item">Level 2</div>
-          
-          <!-- free play /multiplay setting buttons -->
-          <div id="locmode" class="menu-item">Location: default</div>
-          <div id="diffmode" class="menu-item">Difficulty: Normal</div>
-          <div id="distmode" class="menu-item">Distance: 1km</div>
-          
-          <div id="lmode" class="menu-item">Select Location Mode</div>
-          <div id="showmap" class="menu-item">Map visible</div>
-          <div id="showdist" class="menu-item">Distance visible</div>
-          <div id="showlocs" class="menu-item">Coordinates invisible</div>
-          <div id="showstreet" class="menu-item">Goal street visible</div>
-        
-          <div id="start" class="menu-item">Start Game!</div>
-        <span class='notice'>(Click the screen first to focus. Refresh to restart with a new egg when you got stuck)</span>
+        Menu
+        <div id="tutorial" class="menu-item">Tutorial</div>
+        <div id="campaign" class="menu-item">Single player campaign</div>
+        <div id="freeplay" class="menu-item">Single player free play</div>
+        <div id="multiplay" class="menu-item">2-Player: Capture the Flag</div>
       </div>
     </div>
   </div>
   
   
   
-  <div style="position: fixed; bottom: 15px; left: 0; right: 0; border: none; z-index: 40;width: 100%">
+  <!-- <div style="position: fixed; bottom: 15px; left: 0; right: 0; border: none; z-index: 40;width: 100%">
     <div id="bottom_box" class="box" style='opacity:0'>
       <span id="restart">Click here to try again<span/>
     </div>
-  </div>
+  </div> -->
   
-  <div id="hud" class="hudcl" style='opacity:0;'>
+  <!-- <div id="hud" class="hudcl" style='opacity:0;'>
     <div id="location_check" style"position:fixed; bottom: 40px; left: 10px;">
       <span id="status">checking geoLocation...</span>
       <span id="localizer"></span> 
@@ -92,26 +91,33 @@
 
     </div>
 
-  </div>
-  <div id="pano_canvas" style="height: 100%; width: 100%; ">
-    <div style="position: fixed; top: 15px; height: 10%; left: 0; right: 0; border: none; z-index: 40;width: 100%">
-      <div id="heat_box" class="box" style="padding:10px; position:fixed; left:0; right:0; top:1%; height:10%; z-index:50; opacity:0">
-        Starting...
+  </div> -->
+  <div style="height: 100%; width: 100%">
+    <div id="pano_canvas" style="height: 90%; width: 100%; ">
+      <div style="position: fixed; top: 15px; height: 10%; left: 0; right: 0; border: none; z-index: 40;width: 100%">
+        <div id="heat_box" class="box" style="padding:10px; position:fixed; left:0; right:0; top:1%; height:10%; z-index:50; opacity:0">
+          <div id="heatometer" style="position:relative; top:25%">
+            Starting...
+          </div>
+        </div>
+        <div id="compass_box" class="box" style="padding:10px; position:fixed; left:1%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
+          <img id='cps_im' src="compass1.png" style="height: 100%; width:100%;" />
+        </div>
+        <div id="info_box" class="screen_txt" style="position:fixed; left:15%; top:3%; heigth: 10%; z-index:50; opacity:0">
+          <span id="compass-txt"></span> <br>
+          <span id="streetizer"></span><br>
+          <span id="distizer"></span>
+        </div>
+        <div id="map_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:69%; height:16%; width:17%;z-index:50; opacity:0">
+          <div id="map_canvas" style="height:100%; width:100%;"></div>
+        </div>
+        <div id="speed_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:1%; height:10%; width:12%;z-index:50; opacity:0">
+          <div id="speedometer" style="position:relative; top:25%"> km/h</div>
+        </div>
       </div>
-      <div id="compass_box" class="box" style="padding:10px; position:fixed; left:1%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
-        <img id='cps_im' src="compass1.png" style="height: 100%; width:100%;" />
-      </div>
-      <div id="info_box" class="screen_txt" style="position:fixed; left:15%; top:3%; heigth: 10%; z-index:50; opacity:0">
-        <span id="compass-txt"></span> <br>
-        <span id="streetizer"></span><br>
-        <span id="distizer"></span>
-      </div>
-      <div id="map_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:69%; height:16%; width:17%;z-index:50; opacity:0">
-        <div id="map_canvas" style="height:100%; width:100%;"></div>
-      </div>
-      <div id="speed_box" class = 'box' style="padding:10px; position:fixed; left:79%; top:1%; height:10%; width:10%;z-index:50; opacity:0">
-        <div id="speedometer"> km/h</div>
-      </div>
+    </div>
+    <div id="status_bar" class="hudcl" style="height: 10%; width: 100%">
+      <span id="status"></span>
     </div>
   </div>
 

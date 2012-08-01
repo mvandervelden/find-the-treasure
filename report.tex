@@ -1,0 +1,79 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage[shadow]{todonotes}
+
+
+%opening
+\title{Find the Treasure!\\Building a Multiplayer Javascript Game Using Cloud Services}
+
+\author{Maarten van der Velden\\maarten.vandervelden@student.uva.nl\\Student ID: 5743087}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction} % (fold)
+\label{sec:introduction}
+For the Project of the Game Programming course in the Master AI, I decided to  try and make a multiplayer game that does not need to run a dedicated server, but relies on cloud services only. It was initially influenced by a project I did for a course in Information Visualization, where I used Google Street View\cite{} as a means of visualizing spatial data. The idea to use Google Street View for making a game was not a big step from there. As the most advanced API of Google Maps \cite{} is written in Javascript, this was the obvious choice as a programming language. This enabled me to make the game browser-based, and readily available to publish
+online. During the project I realized more and more that with today's internet speeds and online services, I would not need to host the game on an online server. I use a free web socket server (EasyWebSocket\cite{}) to let players communicate. At client side, the game also takes relatively little processing power, because most of the rendering is done online by Google Maps.
+
+From a gameplay perspective, the goal of the game is to find a treasure that is hidden somewhere in the world, by means of Google Street View. In this way, you make a  virtual quest from your original location in search of the treasure. Your guides to this are limited, as you only get rough hints about how you are doing. In the multiplayer game, you play live against an opponent, and you try to reach the other's starting location as quickly as possible in order to capture your opponent's flag. The game has a number of settings and extras to make things interesting, such as playing at your current location. There are many possibilities for expansion too.
+
+All in all I think I have made a game that, although the concept is simple, is very fun to play, has lots of possibilities for extension, and complies very much with recent trends, mostly the various web-based apps that use cloud computing that appear everywhere. The game is not yet ready for publication, mostly because little effort is put in the design, and little tests are done on the game experience by real users. It can be seen as a proof of concept that the possibilities of making a javascript game using web services like Google Maps are quite big, and with as little experience as I have in game making and webdevelopment, it is possible to make a fun online multiplayer game.
+
+In this report I explain how the game was made. First I will tell something about the different building blocks of the game. Then I will explain some technical details of the game itself. In section 4 I will discuss the game modes and gameplay, and in the last sections I show some of the various possibilities, but also the limitations this game concept has, before drawing my conclusion.
+
+% section Introduction (end)
+\section{Building Blocks} % (fold)
+\label{sec:building_blocks}
+The game is basically an HTML webpage, dynamically build using Javascript.
+I use three web services to make this game work, the Google Maps API, EasyWebSockets, and MooTools. The first one is a very extensive API to make
+a personal experience of Google Maps. Next to fully customizable Google Map windows and adding layers to these, it is possible to do path planning, do
+geographical calculations and use Street View. The Street View functionality forms the basis of the game, while I use some other features too for the various game elements.
+
+EasyWebSockets provides, just like the name suggests, a very basic and easy web socket service, hosted free. Using this service, clients on the same url can broadcast messages to all other visitors asynchronously. This is used to communicate live game data in multiplayer games, mostly the players's location and progress towards their goal.
+
+MooTools is a Javascript toolbox to make it easy to dynamically use HTML webpages. I use it for all kinds of behind-the-screens work, mostly regarding the visualization on the webpage, such as showing, hiding and changing of interface objects, and using the game menu.
+
+With these three web services, I started the implementation of the game.
+
+I implemented and tested this game using the Google Chrome browser on Mac OSX Lion. I did not really test it in other browsers, so I cannot guarantee its working with different settings.
+
+% section building_blocks (end)
+\section{Implementation} % (fold)
+\label{sec:implementation}
+
+
+% section implementation (end)
+\section{Gameplay} % (fold)
+\label{sec:gameplay}
+The game was developped quite organically. I started out with the idea of making a game to find `Easter Eggs' in Google Street View, after I discovered the Maps API supplied tools to make users visit a Street View page without the possibility of exiting to a Map view. Furthermore, I learned that it was possible to navigate Street View using the keyboard's arrow keys, creating a more game-like experience than clicking around.
+
+The basic idea was to be put at a random location in Street View, and there would be an Easter egg hidden somewhere else. The only clue the player would get is a very vague `Hotter' or `Cooler' (heat-based hints), indicating that the player would get closer, respectively further away from the Easter egg. This is also the way my parents would give hint when I was looking for Easter eggs when I was young.
+
+After having implemented this basic idea, and showing it to some friends, I realized that finding the goal was rather hard with only these limited hints. This was mostly because the heat-based hints were given based on the Euclidean distance from the player to the goal, \emph{as the bird flies}. In a town like Amsterdam, where most streets are twisted and have turns everywhere, this often caused seemingly contradictory hints, and sometimes there is no road in the direction you should want to go. (Or there is a road, but it has no Street View because the Google cars didn't visit it.)
+
+Also, because the player didn't get any hints on how much `hotter' or `cooler' he was getting, it might well be that he ended up going almost perpendicular to the optimal direction, causing the player to get in a street parallel to the Easter egg.
+
+Keeping these experiences in mind, I decided to extend the game. I added more information sources, like a map of the area around the player, a bar that keeps track of your general progress and a compass that points towards the eggs. Also, because it is not Easter the whole year, I replaced the Easter eggs with treasures.
+
+Furthermore I thought an online game cannot go without a multiplayer function. Because I have only very little experience in network programming and database management, I looked for a solution as light weight as possible. I first thought of using the Facebook API for user management and playing with friends, but because I would have to do the user management myself, using the Google App Engine or something similar, I thought, for the moment it would be sufficient to show that multiplayer would work at all, and I crossed the EasyWebSockets website \cite{}.
+
+I chose to keep the multiplayer game very simple for the moment, and make it a two player capture the flag game, where the starting point of player A is the goal of player B. So you don't only have to find the treasure, but your opponent is doing the same thing at the same time, in the opposite direction. I thought that in this way, the benefit of a multiplayer veriosn would be greatest. It is real-time, you can see your opponent's progress alongside yours, and view his location on the map and in Street View itself, if you're close enough to each other. Being close to each other is stimulated by having the goals in the opposite direction. Another option would have been to make it a race, with the same start and finish positions.
+
+I did not pay much attention to the interface before starting the game. The welcoming screen and menu are rather crudely designed, and as the website has no user management system, I cannot let player choose their opponent from the game. To enable this, I make a random url for each multi-player game. The first player who visits after the player who \emph{hosts} the game, will play with the settings the host shows. The host, who makes the game, should send a message with the url to the other player using a channel outside the game, such as a mail, messaging, or chat system. The main downside of this is that the game host cannot leave or reload the game site before starting the game, because some game settings are stored temprarily in the host's web page only.
+
+% Continue explaining gam modes and the game screen
+
+% section gameplay (end)
+\section{Discussion} % (fold)
+\label{sec:discussion}
+
+\subsection{Conclusion} % (fold)
+\label{sub:conclusion}
+
+% subsection conclusion (end)
+% section discussion (end)
+\end{document}

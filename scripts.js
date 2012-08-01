@@ -41,8 +41,12 @@ function getRandomLoc(latlng, distance) {
     var diffLng = Math.abs(google.maps.geometry.spherical.computeOffset(latlng, 
         distance, 90).lng() - google.maps.geometry.spherical.computeOffset(
             latlng, distance, 270).lng());
-    return new google.maps.LatLng(latlng.lat() + Math.random() * diffLat, 
-        latlng.lng() + Math.random() * diffLng);
+    // console.log('Set diffLat at: ');
+    // console.log(diffLat);
+    // console.log('this equals distance ');
+    // console.log(distance)
+    return new google.maps.LatLng(latlng.lat() + (Math.random()-.5) * 2*diffLat, 
+        latlng.lng() + (Math.random()-.5) * 2 * diffLng);
 }
 
 function getStreetName(latlng, callback) {
@@ -63,9 +67,8 @@ function getStreetName(latlng, callback) {
 }
 
 function getClosestStreetView(latlng, callback) {
-    var svs = new google.maps.StreetViewService()
-    svs.getPanoramaByLocation(latlng, 200,
-    function(data, status) {
+    var svs = new google.maps.StreetViewService();
+    svs.getPanoramaByLocation(latlng, 200, function(data, status) {
         if (status == "ZERO_RESULTS") {
             getClosestStreetView(getRandomLoc(latlng, window.distance), callback);
         } else {
@@ -86,8 +89,7 @@ function setGoalPosition(latlng) {
             $('streetizer').set('html', 'at: ' + streetname);
         }
     });
-    var dist = google.maps.geometry.spherical.computeDistanceBetween(
-                window.startPos, latlng);
+    var dist = google.maps.geometry.spherical.computeDistanceBetween( window.startPos, window.goalPosition);
     initProgressBar(dist);
     
     var names = ['egg1.gif', 'egg2.gif', 'egg3.gif'];
@@ -123,8 +125,6 @@ function setGoalPosition(latlng) {
 
 function playerMoved() {
     if (!window.hasMoved || window.goalPosition == undefined) {
-        console.log(window.hasMoved);
-        console.log(window.goalPosition);
         window.hasMoved = true
         return
     }
@@ -145,19 +145,8 @@ function playerMoved() {
     if (window.gamemode == "MultiPlayer") {
         // Send location to opponent
         window.socket.send(window.uid+':Location:'+currentLocation.lat()+','+currentLocation.lng()+','+dist);
-        if (window.previousDistance != undefined && window.opponentDist != undefined) {
-            // Put in console who is closer
-            if (window.previousDistance < window.opponentDist) {
-                console.log('You are closer!');
-            } else {
-                console.log('Opponent is closer!');
-            }
-        }
     }
-    // Debug purposes
-    if (window.viewdist) {
-        $('distizer').set('html', Math.round(dist) + 'm to go');
-    }
+
     // Show goal marker if close enough
     if (dist > 100 && dist < 400) {
         getStreetName(window.panorama.getPosition(), function(streetname) {
@@ -174,25 +163,14 @@ function playerMoved() {
     }
     
     window.previousDistance = dist;
-    console.log('moved');
 }
 
 function opponentMoved() {
-    if (window.previousDistance != undefined) {
-        if (window.previousDistance < window.opponentDist) {
-            console.log('You are closer!');
-        } else {
-            console.log('Opponent is closer!');
-        }
-    }
-    else {
-        console.log('no prev_dist?');
-        console.log(window.previousDistance);
-    }
     window.opponent.setPosition(window.opponentPos);
     if (window.viewmap) {
         window.opp_peg.setPosition(window.opponentPos);
     }
+    updateOpponentProgressBar(window.opponentDist);
 }
 
 function setLocation(latlng) {
@@ -262,7 +240,6 @@ function setLocation(latlng) {
     // Add a listener to check whether the player is moving around SV
     google.maps.event.addListener(window.panorama, 'position_changed',
     function() {
-        console.log('moved?');
         playerMoved();
         if (window.viewcompass) {
             compassChanged;
@@ -298,6 +275,7 @@ function resetGoalPosition(latlng) {
             $('streetizer').set('html', 'at: ' + streetname);
         }
     });
+
     if (window.viewdist) {
         var dist = google.maps.geometry.spherical.computeDistanceBetween(
                 window.panorama.getPosition(), latlng);
@@ -313,53 +291,71 @@ function resetGoalPosition(latlng) {
     if (window.viewdist) {
         $('distizer').set('html', Math.round(dist) + 'm to go');
     }
+    var dist = google.maps.geometry.spherical.computeDistanceBetween(
+                window.startPos, latlng);
+    initProgressBar(dist);
+    window.previousDistance = dist;
+    updateSpeedOMeter(window.startPos);
+    updateHeatOMeter(0);
 }
 
 function set_difficulty(diff) {
     //difficulty settings
-    // very easy 0: heat_indicator + compass + distance + map
-    // easy      1: heat_indicator + compass + distance
-    // normal    2: heat_indicator + compass
+    //  easy     0: heat_indicator + compass +  + map
+    // normal    1: heat_indicator + compass
     // original  3: heat_indicator
-    
+    // With progress bar, distance is irrelevant: leave off, removed very easy setting
     if (diff == 0) {
         window.difficulty = 0;
-        window.viewdist = true;
         window.viewcompass = true;
         window.viewmap = true;
-        return 'Very Easy';
+        return 'Easy';
     } else if (diff == 1) {
         window.difficulty = 1;
-        window.viewdist = true;
         window.viewcompass = true;
         window.viewmap = false;
-        return 'Easy';
+        return 'Normal';
     } else if (diff == 2) {
         window.difficulty = 2;
-        window.viewcompass = true;
-        window.viewmap = false;
-        window.viewdist = false;
-        return 'Normal';
-    } else if (diff == 3) {
-        window.difficulty = 3;
         window.viewcompass = false;
         window.viewmap = false;
-        window.viewdist = false;
         return 'Original';
     } else {
-        console.log("Something's wrong, not gooed diff setting" + diff);
+        console.log("Something's wrong, not good diff setting" + diff);
         return 'None';
     }
 }
+
+function set_location(mode) {
+    
+    if (mode == 0) {
+        window.locmode = 0;
+        return 'At Yours! (use local data)';
+    } else if (mode == 1) {
+        window.locmode = 1;
+        return 'Amsterdam';
+    } else if (mode == 2) {
+        window.locmode = 2;
+        return 'New York';
+    } else if (mode == 3) {
+        window.locmode = 3;
+        return 'Tokyo';
+    } else {
+        console.log("locmode too high?")
+        console.log(mode);
+        return 'None';
+    }
+}
+
 
 function optionManager() {
     // distance default = 1000
     window.distance = 1000;
     // set default difficulty
-    set_difficulty(2);
+    set_difficulty(1);
     
     // Default: no custum locations
-    window.locmode = false;
+    window.locmode = 3;
     
     // Speed always visible
     window.viewspeed = true;
@@ -374,8 +370,8 @@ function optionManager() {
         $('campaign').addEvent('click', reloadGame);
         
         // If campaign: get buttons to choose a level
-        $('gamemenu').grab(new Element('div.menu-item', {id:'level1', html:'Level 1'}));
-        $('gamemenu').grab(new Element('div.menu-item', {id:'level2', html:'Level 2'}));
+        $('gamemenu').grab(new Element('div.menu-item', {id:'level1', html:'Under Construction...'}));
+        // $('gamemenu').grab(new Element('div.menu-item', {id:'level2', html:'Level 2'}));
         // TODO Add levels
     });
     
@@ -399,6 +395,7 @@ function optionManager() {
     });
     
     $('multiplay').addEvent('click', function() {
+        set_difficulty(0);
         $('tutorial').dispose();
         $('campaign').dispose();
         $('freeplay').dispose();
@@ -442,25 +439,20 @@ function addSettingsButtons() {
     // If free play: get buttons to choose settings
     $('gamemenu').grab(new Element('div.menu-item', {
         id:'locmode',
-        html:'Location: default',
+        html:'Location: '+ set_location(window.locmode),
         events: {
             click: function() {
-                if (window.locmode) {
-                    window.locmode = false;
-                    $('locmode').set('html', 'Location: default');
-                } else {
-                    window.locmode = true;
-                    $('locmode').set('html', "Location: at Your's!");
-                }
+                var loc = set_location((window.locmode+1)%4);
+                $('locmode').set('html', 'Location: ' + loc);
             }
         }
     }));
     $('gamemenu').grab(new Element('div.menu-item', {
         id:'diffmode', 
-        html:'Difficulty: Normal',
+        html:'Difficulty: ' +set_difficulty(window.difficulty),
         events: {
             click: function() {
-                var s = set_difficulty((window.difficulty+1)%4);
+                var s = set_difficulty((window.difficulty+1)%3);
                 $('diffmode').set('html', 'Difficulty: ' + s);
             }
         }
@@ -471,10 +463,13 @@ function addSettingsButtons() {
         events: {
             click: function() {
                 if (window.distance == 1000) {
+                    window.distance = 2000;
+                } else if (window.distance == 2000){
                     window.distance = 500;
                 } else {
                     window.distance = 1000;
                 }
+                
                 $('distmode').set('html', 'Distance:  ' + window.distance + 'm');
             }
         }

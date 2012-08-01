@@ -43,6 +43,9 @@ function startTutorial() {
                         setGoalPosition(window.goalPosition);
                     } else {
                         resetGoalPosition(window.goalPosition);
+                        // var dist = google.maps.geometry.spherical.computeDistanceBetween(
+                        //             window.startPos, latlng);
+                        // initProgressBar(dist);
                     }
                 }
 
@@ -54,7 +57,7 @@ function startTutorial() {
 
 function startFreePlayGame() {
     window.gamemode = 'FreePlay';
-    if (window.locmode) {
+    if (window.locmode == 0) {
         // Check whether the user's location can be tracked, otherwise take the default location to start.
         $('status_bar').grab(new Element('div', {
             id: 'status',
@@ -66,24 +69,36 @@ function startFreePlayGame() {
             geoError('not supported');
         }
     } else {
-        var startPos = new google.maps.LatLng(52.356056, 4.892968);
-        initFreePlayLocations(startPos);
+        if (window.locmode == 1) {
+            // Amsterdam
+            window.startPos = new google.maps.LatLng(52.356056, 4.892968);
+        } else if (window.locmode == 2) {
+            // New York
+            window.startPos = new google.maps.LatLng(40.748069770416734, -73.98480892181396);
+        } else if (window.locmode == 3) {
+            // Tokyo
+            window.startPos = new google.maps.LatLng(35.622698214535184, 139.7735595703125);
+        } else {
+            window.startPos = new google.maps.LatLng(52.356056, 4.892968);
+        }
+
+        initFreePlayLocations(window.startPos);
     }
 }
 
 function initFreePlayLocations(startPos) {
     // Set the current position to the nearest Street View to the Start Location
-    getClosestStreetView(startPos, setLocation);
+    getClosestStreetView(window.startPos, setLocation);
     // Set the Treasure location randomly within certain distance of the start
     // position, somewhere where there is Street View
-    var goal = getRandomLoc(startPos, window.distance);
-    getClosestStreetView(goal, setGoalPosition);
+    window.goalPosition = getRandomLoc(startPos, window.distance);
+    getClosestStreetView(window.goalPosition, setGoalPosition);
 }
 
 function setupMultiPlayerGame() {
     window.gamemode = 'MultiPlayer';
     
-    if (window.locmode) {
+    if (window.locmode == 0) {
         // Check whether the user's location can be tracked, otherwise take the default location to start.
         $('status_bar').grab(new Element('div', {
             id: 'status',
@@ -95,7 +110,19 @@ function setupMultiPlayerGame() {
             geoError('not supported');
         }
     } else {
-        var startPos = new google.maps.LatLng(52.356056, 4.892968);
+        if (window.locmode == 1) {
+            // Amsterdam
+            var startPos = new google.maps.LatLng(52.356056, 4.892968);
+        } else if (window.locmode == 2) {
+            // New York
+            var startPos = new google.maps.LatLng(40.748069770416734, -73.98480892181396);
+        } else if (window.locmode == 3) {
+            // Tokyo
+            var startPos = new google.maps.LatLng(35.622698214535184, 139.7735595703125);
+        } else {
+            var startPos = new google.maps.LatLng(52.356056, 4.892968);
+        }
+
         initMultiPlayerLocations(startPos);
     }
 }
@@ -120,7 +147,7 @@ function startMultiPlayerGame() {
 }
 
 function gameFinished() {
-    if (!window.gamemode == "Tutorial") {
+    if (window.gamemode != "Tutorial") {
         $('pano_canvas').grab(new Element('div.notice', {
             id: 'gameover',
             html: 'Congrats!! <br/> You found the treasure! <br/> Click to play again!',

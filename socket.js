@@ -96,6 +96,7 @@ function init_multiplayergame() {
     }
     // Display Waiting message
     $('text_box').set('opacity', 0);
+    $('disclaimer').set('opacity', 0);
     $('pano_canvas').grab(new Element('div.notice', {
         id: 'waiting_msg',
         html: 'Waiting for opponent to connect...'

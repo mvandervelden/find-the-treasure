@@ -199,6 +199,7 @@ function setLocation(latlng) {
     $('heat_box').fade();
     $('info_box').fade();
     var menu = $('text_box').dispose();
+    var menu = $('disclaimer').dispose();
     // Set up the Street View Panorama
     //window.panorama = window.map.getStreetView();
     window.panorama = new google.maps.StreetViewPanorama(
@@ -362,22 +363,22 @@ function optionManager() {
     
     $('tutorial').addEvent('click', startTutorial);
     
-    $('campaign').addEvent('click', function() {
-        $('tutorial').dispose();
-        $('freeplay').dispose();
-        $('multiplay').dispose();
-        $('campaign').removeEvents('click');
-        $('campaign').addEvent('click', reloadGame);
-        
-        // If campaign: get buttons to choose a level
-        $('gamemenu').grab(new Element('div.menu-item', {id:'level1', html:'Under Construction...'}));
-        // $('gamemenu').grab(new Element('div.menu-item', {id:'level2', html:'Level 2'}));
-        // TODO Add levels
-    });
+    // $('campaign').addEvent('click', function() {
+    //     $('tutorial').dispose();
+    //     $('freeplay').dispose();
+    //     $('multiplay').dispose();
+    //     $('campaign').removeEvents('click');
+    //     $('campaign').addEvent('click', reloadGame);
+    //     
+    //     // If campaign: get buttons to choose a level
+    //     $('gamemenu').grab(new Element('div.menu-item', {id:'level1', html:'Under Construction...'}));
+    //     // $('gamemenu').grab(new Element('div.menu-item', {id:'level2', html:'Level 2'}));
+    //     // TODO Add levels
+    // });
     
     $('freeplay').addEvent('click', function() {
         $('tutorial').dispose();
-        $('campaign').dispose();
+        // $('campaign').dispose();
         $('multiplay').dispose();
         $('freeplay').removeEvents('click');
         $('freeplay').addEvent('click', reloadGame);
@@ -397,7 +398,7 @@ function optionManager() {
     $('multiplay').addEvent('click', function() {
         set_difficulty(0);
         $('tutorial').dispose();
-        $('campaign').dispose();
+        // $('campaign').dispose();
         $('freeplay').dispose();
         $('multiplay').removeEvents('click');
         $('multiplay').addEvent('click', reloadGame);

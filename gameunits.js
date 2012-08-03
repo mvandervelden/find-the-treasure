@@ -173,7 +173,7 @@ function initMap(latlng) {
         var opp_peg = new google.maps.MarkerImage('peggie_opp.png');
         opp_peg.anchor = new google.maps.Point(6,16);
         opp_peg.size = new google.maps.Size(24,47);
-        opp_peg.scaledSize = new google.maps.Size(2,23);
+        opp_peg.scaledSize = new google.maps.Size(12,23);
         window.opp_peg = new google.maps.Marker({
             position: window.opponentPos,
             map: window.map,
